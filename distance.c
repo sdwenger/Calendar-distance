@@ -1,16 +1,10 @@
 /**
- * @version 3.0
+ * @version 4.0
  * @author Sullivan Wenger
- * The purpose of this project is to create
- * a program that calculates the distance
- * between two days or adds or subtracts an
- * amount of days from a given date.
- * So far, the part where the user enters a distance is fully functional
- * If the program enters two dates, the program can parse the dates and tell which comes first.
- * If they're in the same month, it can do the calculation.
- * This has been changed from version 2.0 in a couple ways.
- *   2.0 had all dates and day distance in an array called data. This one splits them up.
- *   The char array date has been changed to dateInput.
+ * This program has two functionalities.
+ * First, it can calculate the difference between two days.
+ * Second, it can calculate which date is a particular distance in either direction from another date.
+ * This program assumes a year 0 and ignores the days taken from 1752 and doesn't error-check the entered days, but is otherwise accurate.
  */
 
 #include <string.h>
@@ -29,7 +23,7 @@ int main () {
 	int m [12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	int *months = m; months --; //this way, the index of months will be 1-12 rather than 0-11
 	int negative = 0; //if days will be negative, regardless of path taken
-	int leap_count = 0;
+	int leapCount = 0; //how many intervening leap years (only for if distance between days is calculated).
 	ptr = dateInput;
 	for (int i = 0; i < 3; i ++) { //initialize arrays to 0
 		date1 [i] = 0;
@@ -130,12 +124,79 @@ int main () {
 		else if (date2 [0] > date1 [0]) { //years match, second month is higher
 			negative = 0;
 		}
-		else if (date2 [1] < date1 [1]) { //years and months match, first day is higher
+		else if (date2 [1] < date1 [1]) { //years and months match. Solves it right here
 			days = date2 [1] - date1 [1];
 			negative = 2; //to prevent any further calculation. this is already solved
 		}
 		if (negative < 2) {
-			
+			//date2 is earlier than date1
+			if (negative) { 
+				//counts the years in between, including the earlier year, not including the later year
+				for (int i = date2 [2]; i < date1 [2]; i ++) {
+					leapCount += leap(i);
+				}
+				//in case the earlier date was after February in a leap year (so the loop overcounted)
+				if (leap (date2 [2]) && date2 [0] >= 3) {
+					leapCount --;
+				}
+				//in case the later date was after February in a leap year (so the loop undercounted)
+				if (leap (date1 [2]) && date1 [0] >= 3) {
+					leapCount ++;
+				}
+				days += date2 [2] - date1 [2];
+				days *= 365;
+				days -= leapCount;
+			}
+			//date1 is earlier than date2
+			else {
+				//counts the years in between, including the earlier year, not including the later year
+				for (int i = date1 [2]; i < date2 [2]; i ++) {
+					leapCount += leap(i);
+				}
+				//in case the earlier date was after February in a leap year (so the loop overcounted)
+				if (leap (date1 [2]) && date1 [0] >= 3) {
+					leapCount --;
+				}
+				//in case the later date was after February in a leap year (so the loop undercounted)
+				if (leap (date2 [2]) && date2 [0] >= 3) {
+					leapCount ++;
+				}
+				days += date2 [2] - date1 [2];
+				days *= 365;
+				days += leapCount;
+			}
+			//the difference from the years has been calculated. This will calculate the difference with month and day
+			//date1 is earlier in the year
+			if (date1 [0] > date2 [0]) {
+				negative = 1;
+			}
+			//date2 is earlier in the year
+			else if (date2 [0] > date1 [0]) {
+				negative = 0;
+			}
+			//they're in the same month. Solves it right here, then stops calculation.
+			else {
+				negative = 2;
+				days += date2 [1];
+				days -= date1 [1];
+			}
+		}
+		//negative can get set to 2 in the previous if statement. The following block only occurs if the months are different.
+		if (negative < 2) {
+			//if the month in date1 is higher
+			if (negative) {
+				for (int i = date2 [0]; i < date1 [0]; i ++) {
+					days -= months [i];
+				}
+			}
+			//if the month in date2 is higher
+			else {
+				for (int i = date1 [0]; i < date2 [0]; i ++) {
+					days += months [i];
+				}
+			}
+			days += date2 [1];
+			days -= date1 [1];
 		}
 		printf("%i\n",days);
 	}
@@ -155,6 +216,7 @@ int main () {
 		 * for example, Oct 2 can be treated as Sept 32
 		 * one step further would be Nov 2 as Sept 63
 		 * one step even further would treat Jan 2 2010 as Dec 33 2009
+		 * I don't, however, use this concept in reverse here (e.g. the program has no concept of Oct -1 = Sept 29 or Oct 0 = Sept 30).
 		 * so when the user input for day is negative, I can infinitely increase the day value until a straight subtraction is possible
 		 * or if they enter something positive, I can just add it to the day value, then determine what month and year it's in
 		 */
